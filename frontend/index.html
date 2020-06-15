@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="icon" href="../static/icon.jpg" />
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <meta name="viewport" content="width=device-width">
+        <title> COVID Dashboard </title>
+        <style>
+            .background {
+                background-size: 100% 100%;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+                background-image: url("../static/background.jpg");
+            }
+            h1 {
+                color: yellow;
+                padding-top: 0px;
+                text-align: center;
+            }
+            .split1 {
+                height: 20%;
+                width: 100%;
+            }
+            .split2 {
+                height: 80%;
+                width: 100%;
+            }
+            p {
+                color: aqua;
+                font-size: 14pt;
+                text-align: justify;
+                padding-left: 20%;
+                padding-right: 20%;
+            }
+            .button {
+                opacity: 1;
+                width: 220px;
+                border: none;
+                color: white;
+                cursor: pointer;
+                font-size: 13px;
+                margin: 4px 2px;
+                transition: 0.3s;
+                padding: 12px 24px;
+                text-align: center;
+                border-radius: 15px;
+                display: inline-block;
+                text-decoration: none;
+                background-color: #f4511e;
+            }
+            #dashboard-div {
+                display: none;
+            }
+            select option {
+                background: bisque; 
+                border:1px solid black;
+                cursor: pointer;
+                line-height: 20px;
+                font-size: 14pt;
+            }
+            #pageloader {
+                cursor: wait;
+                display: none;
+                position: fixed;
+                z-index: +100 !important;
+            }
+            #pageloader img {
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 80%;
+                height: 100%;
+                position: fixed;
+                padding-left: 10%;
+                padding-right: 10%;
+                text-align: center;
+                background-repeat: no-repeat !important;
+                background-color: rgba(255, 255, 255, 0.7);
+            }
+            .tableclass {
+                border-spacing: 0 1em;
+                border-collapse: collapse;
+                border: 2px solid darkblue;
+            }
+            .thtd {
+                width: 1%;
+                padding-top: 1%;
+                font-weight: bold;
+                text-align: center;
+                padding-bottom: 1%;
+                border: 2px solid darkblue;
+            }
+            .thtd2 {
+                width: fit-content;
+                padding-top: 1%;
+                font-size: 12pt;
+                font-weight: bold;
+                text-align: center;
+                padding-bottom: 1%;
+                border: 1px solid darkolivegreen;
+            }
+        </style>
+        <script>
+            $(window).ready(function() {
+                var select = $('select');
+                select.html(select.find('option').sort(function(x, y) {
+                    return $(x).text() > $(y).text() ? 1 : -1;
+                }));
+                $("#showdashboard").on("click", function() {
+                    $("#info-div").hide();
+                    $("#dashboard-div").show();
+                });
+                $('option[value=""]').prop('selected', true);
+                $('#state').on('change', function() {
+                    $("#pageloader").fadeIn("slow");
+                    var today = new Date();
+                    var date = (today.getMonth() + 1) + "-" + today.getDate() + "-" + today.getFullYear();
+                    yesterday = today
+                    yesterday.setDate(yesterday.getDate()-1);
+                    var yday = (yesterday.getMonth() + 1) + "-" + yesterday.getDate() + "-" + yesterday.getFullYear();
+
+                    var filename = today.getHours() >= 9 ? date : yday
+                    var array = { Date: date, State: this.value, Filename: filename};
+                    var state = this.value == "Total" ? "All State" : this.value
+                    
+                    $.ajax({
+                        type: "POST",
+                        url: "/anuvrat/covid/getstats",
+                        dataType: "json",
+                        data: JSON.stringify(array),
+                        contentType: "application/json; charset=utf-8",
+                        async: false,
+                        cache: false,
+                        success: function(data) {
+                            var confirmed = data.confirmed
+                            var recovered = data.recovered
+                            var death = data.dead
+
+                            var todaynew = data.todaystats.new
+                            var todayrecover = data.todaystats.recovered
+                            var todaydeath = data.todaystats.dead
+
+                            var totalconfirm = confirmed + todaynew
+                            var totalrecover = recovered + todayrecover
+                            var totaldeath = death + todaydeath
+
+                            $("#all-stats").html("<table class='tableclass'><tr><th class='thtd' style='color: yellow; width: 2%;'>" + state + " Cases, till " + yday + "</th><th class='thtd' style='color: red;'>Confirmed</th><td class='thtd' style='color: red;'>" + confirmed + "</td><th class='thtd' style='color: blue;'>Active</th><td class='thtd' style='color: blue;'>" + ((confirmed - recovered - death) >= 0 ? (confirmed - recovered - death) : 0) + "</td><th class='thtd' style='color: green;'>Recovered</th><td class='thtd' style='color: green;'>" + recovered + "</td><th class='thtd' style='color: green;'>Recovery Rate</th><td class='thtd' style='color: green;'>" + (recovered * 100 / confirmed).toFixed(2) + "</td><th class='thtd' style='color: grey;'>Dead</th><td class='thtd' style='color: grey;'>" + death + "</td><th class='thtd' style='color: grey;'>Death Rate</th><td class='thtd' style='color: grey;'>" + (death * 100 / confirmed).toFixed(2) + "</td></tr><tr><th class='thtd' style='color: yellow; width: 2%;'>Today's Cases, " + date + "</th><th class='thtd' style='color: red;'>Confirmed</th><td class='thtd' style='color: red;'>" + todaynew + "</td><th class='thtd' style='color: blue;'>Active</th><td class='thtd' style='color: blue;'>" + ((todaynew - todayrecover - todaydeath) >= 0 ? (todaynew - todayrecover - todaydeath) : 0) + "</td><th class='thtd' style='color: green;'>Recovered</th><td class='thtd' style='color: green;'>" + todayrecover + "</td><th class='thtd' style='color: green;'>Recovery Rate</th><td class='thtd' style='color: green;'>" + (todayrecover * 100 / todaynew).toFixed(2) + "</td><th class='thtd' style='color: grey;'>Dead</th><td class='thtd' style='color: grey;'>" + todaydeath + "</td><th class='thtd' style='color: grey;'>Death Rate</th><td class='thtd' style='color: grey;'>" + (todaydeath * 100 / todaynew).toFixed(2) + "</td></tr><tr><th class='thtd' style='color: yellow; width: 2%;'>Total Cases</th><th class='thtd' style='color: red;'>Confirmed</th><td class='thtd' style='color: red;'>" + totalconfirm + "</td><th class='thtd' style='color: blue;'>Active</th><td class='thtd' style='color: blue;'>" + ((totalconfirm - totalrecover - totaldeath) >= 0 ? (totalconfirm - totalrecover - totaldeath) : 0) + "</td><th class='thtd' style='color: green;'>Recovered</th><td class='thtd' style='color: green;'>" + totalrecover + "</td><th class='thtd' style='color: green;'>Recovery Rate</th><td class='thtd' style='color: green;'>" + (totalrecover * 100 / totalconfirm).toFixed(2) + "</td><th class='thtd' style='color: grey;'>Dead</th><td class='thtd' style='color: grey;'>" + (death + todaydeath) + "</td><th class='thtd' style='color: grey;'>Death Rate</th><td class='thtd' style='color: grey;'>" + (totaldeath * 100 / totalconfirm).toFixed(2) + "</td></tr></table>");
+
+                            var tests = data.todaystats.tests;
+                            var population = data.todaystats.population;
+                            var confirmed_million = (confirmed * 1000000 / population).toFixed(2);
+                            var testpermillion = Math.round(tests * 1000000 / population);
+                            var avg_growth_rate = Math.round((((confirmed - data.rate_case) / data.rate_case) * 100) / 7);
+
+                            $("#conclusion").html("<table><tr><td rowspan='5' class='thtd2'> In \"" + state + "\" </td><td class='thtd2'>" + state + " tests done till today, " + date + "</td><td class='thtd2'>" + tests + "</td></tr><tr><td class='thtd2'>The Average Growth Rate</td><td class='thtd2'>" + avg_growth_rate + "%</td></tr><tr><td class='thtd2'>" + state + " Population</td><td class='thtd2'>" + population + "</td></tr><tr><td class='thtd2'>The Corona cases Confirmed Per Million</td><td class='thtd2'>" + confirmed_million + "</td><tr><td class='thtd2'>Tests Per Million Performed</td><td class='thtd2'>" + testpermillion + "</td></tr></table>");
+
+                            $("#overall-case").html("<img src='/anuvrat/covid/" + data.overall_graph + "' />");
+                            $("#overall-case-daily").html("<img src='/anuvrat/covid/" + data.overall_daily + "' />");
+                            $("#death-case").html("<img src='/anuvrat/covid/" + data.death_graph + "' />");
+                            $("#forecast-case").html("<img src='/anuvrat/covid/" + data.forecasted_graph + "' />");
+
+                            $("#pageloader").fadeOut("slow");
+                        }
+                    });
+                });
+            });
+        </script>
+    </head>
+    <body class="background">
+
+        <div id="pageloader">
+            <img src="https://flevix.com/wp-content/uploads/2019/07/Bubble-Preloader-1.gif" alt="processing..."/>
+        </div>
+
+        <div>
+            <div class="split1"> <h1> Novel Coronavirus Disease (COVID-19) </h1> </div>
+
+            <div id="info-div" align="center" class="split2">
+                <p>
+                    Severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2) is the strain of coronavirus that causes coronavirus disease 2019 (COVID-19), a respiratory illness. Colloquially known as simply the coronavirus, it was previously referred to by its provisional name, 2019 novel coronavirus (2019-nCoV), and has also been called human coronavirus 2019 (HCoV-19 or hCoV-19). As described by the U.S. National Institutes of Health, it is the successor to SARS-CoV-1. SARS-CoV-2 is a positive-sense single-stranded RNA virus. It is contagious in humans, and the World Health Organization (WHO) has designated the ongoing pandemic of COVID-19 a Public Health Emergency of International Concern.<br/><br/>
+
+                    Taxonomically, SARS-CoV-2 is a strain of severe acute respiratory syndrome-related coronavirus (SARSr-CoV). It is believed to have zoonotic origins and has close genetic similarity to bat coronaviruses, suggesting it emerged from a bat-borne virus. There is no evidence yet to link an intermediate animal reservoir, such as a pangolin, to its introduction to humans. The virus shows little genetic diversity, indicating that the spillover event introducing SARS-CoV-2 to humans is likely to have occurred in late 2019.<br/><br/>
+
+                    Epidemiological studies estimate each infection results in 1.4 to 3.9 new ones when no members of the community are immune and no preventive measures taken. The virus primarily spreads between people through close contact and via respiratory droplets produced from coughs or sneezes. It mainly enters human cells by binding to the receptor angiotensin converting enzyme 2 (ACE2).<br/><br/>
+
+                    Coronavirus disease (COVID-19) is an infectious disease caused by a newly discovered coronavirus. Most people who fall sick with COVID-19 will experience mild to moderate symptoms and recover without special treatment. The virus that causes COVID-19 is mainly transmitted through droplets generated when an infected person coughs, sneezes, or exhales. These droplets are too heavy to hang in the air, and quickly fall on floors or surfaces. You can be infected by breathing in the virus if you are within close proximity of someone who has COVID-19, or by touching a contaminated surface and then your eyes, nose or mouth.
+                </p>
+                <button id="showdashboard" class="button"> Show Dashboard </button>
+            </div>
+
+            <div id="dashboard-div" class="split2" align="center">
+                <form id="myform" method="post">
+                    <select name="state" id="state" style="size: 14pt;">
+                        <option value="" selected disabled> Choose State</option>
+                        <option value="Total">All States</option>
+                        <option value="Maharashtra">Maharashtra</option>
+                        <option value="Tamil Nadu">Tamil Nadu</option>
+                        <option value="Delhi">Delhi</option>
+                        <option value="Gujarat">Gujarat</option>
+                        <option value="Rajasthan">Rajasthan</option>
+                        <option value="Uttar Pradesh">Uttar Pradesh</option>
+                        <option value="Madhya Pradesh">Madhya Pradesh</option>
+                        <option value="West Bengal">West Bengal</option>
+                        <option value="Bihar">Bihar</option>
+                        <option value="Karnataka">Karnataka</option>
+                        <option value="Andhra Pradesh">Andhra Pradesh</option>
+                        <option value="Telangana">Telangana</option>
+                        <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                        <option value="Haryana">Haryana</option>
+                        <option value="Odisha">Odisha</option>
+                        <option value="Punjab">Punjab</option>
+                        <option value="Assam">Assam</option>
+                        <option value="Kerala">Kerala</option>
+                        <option value="Uttarakhand">Uttarakhand</option>
+                        <option value="Jharkhand">Jharkhand</option>
+                        <option value="Chhattisgarh">Chhattisgarh</option>
+                        <option value="Tripura">Tripura</option>
+                        <option value="Himachal Pradesh">Himachal Pradesh</option>
+                        <option value="Chandigarh">Chandigarh</option>
+                        <option value="Ladakh">Ladakh</option>
+                        <option value="Manipur">Manipur</option>
+                        <option value="Puducherry">Puducherry</option>
+                        <option value="Goa">Goa</option>
+                        <option value="Nagaland">Nagaland</option>
+                        <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                        <option value="Meghalaya">Meghalaya</option>
+                        <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                        <option value="Mizoram">Mizoram</option>
+                        <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                        <option value="Sikkim">Sikkim</option>
+                        <option value="Lakshadweep">Lakshadweep</option>
+                    </select>
+                </form>
+                <div>
+                    <br/>
+                    <span id="all-stats"></span><br/>
+                    <span id="conclusion" style="color: darkkhaki;"></span><br/>                    
+                    <span id="overall-case"></span><span id="overall-case-daily"></span>
+                    <span id="death-case"></span><span id="forecast-case"></span>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+
+
